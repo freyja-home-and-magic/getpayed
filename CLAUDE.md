@@ -95,9 +95,12 @@ A separate record from invoices entirely, synced via the **`group.club.home.fron
 | Field | Owned by | getpayed's job |
 |---|---|---|
 | `photo`, `fields` | shared — each app has an editor | edit |
-| `address` | Gettit | carry forward |
+| `address` | Gettit* | carry forward |
 | `idothisCategories`, `serviceZip`, `idothisRateCents` | idothis | carry forward |
 | `stripeConnected`, `payout` | **getpayed** | write (`publish_stripe_connected`) |
+
+\*Gettit and Letemcook are named in these docs as family members but are
+**not checked out at `~/Work`**, so nothing here was verified against them. Treat their ownership of `address` as inherited documentation, and assume the four apps in this workspace are the ones that actually have to agree.
 
 `payout` is `{pubKey, addieURL}` and travels as a unit: addie is distributed, so a pubkey alone is ambiguous — it only means something resolved against the addie instance holding that account. Addie's own payee shape carries the same two fields, so this can be lifted straight into a payout request. BizBuz and LinkityLink read it for their referral cards, which assert where money goes.
 
