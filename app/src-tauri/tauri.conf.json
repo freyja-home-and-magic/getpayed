@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "GetPayed",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "identifier": "club.home.getpayed",
   "build": {
     "frontendDist": "../src"
@@ -26,8 +26,20 @@
   },
   "plugins": {
     "deep-link": {
-      "mobile": [{"scheme": ["gelder"]}],
-      "desktop": [{"schemes": ["gelder"]}]
+      "mobile": [
+        {
+          "scheme": [
+            "gelder"
+          ]
+        }
+      ],
+      "desktop": [
+        {
+          "schemes": [
+            "gelder"
+          ]
+        }
+      ]
     }
   },
   "bundle": {

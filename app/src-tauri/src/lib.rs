@@ -11,18 +11,18 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tauri::Manager;
 
-// Path-based routing on the dev.8as.world droplet: nginx terminates TLS on
+// Path-based routing on the 8as.world droplets: nginx terminates TLS on
 // 443 and proxies /<service>/ to that service's local port (bdo → 3003,
 // addie → 3005). One hostname, one certificate, everything over real HTTPS
 // — which is also what keeps iOS ATS happy, since the services themselves
 // speak plain HTTP and are not reachable directly from outside.
-const GATEWAY_BDO_URL: &str = "https://dev.8as.world/bdo/";
-const SAVAGE_URL: &str = "https://dev.8as.world/savage/";
+const GATEWAY_BDO_URL: &str = env!("GATEWAY_BDO_URL");
+const SAVAGE_URL: &str = env!("SAVAGE_URL");
 // eumachia is the only piece of this stack that can render a real,
 // interactive "Pay Now" page — savage strips all JavaScript from whatever
 // it serves, so it can't host a Stripe checkout itself (verified this
 // session while designing eumachia).
-const EUMACHIA_PAY_URL: &str = "https://dev.8as.world/eumachia/pay/";
+const EUMACHIA_PAY_URL: &str = env!("EUMACHIA_PAY_URL");
 const BDO_HASH: &str = "gelder-invoice";
 
 // Both BDO and Addie mint their own server-side `uuid`s, distinct from the
@@ -32,9 +32,9 @@ const BDO_HASH: &str = "gelder-invoice";
 // those uuids (the Addie identity, an invoice's BDO record) keys its storage
 // by this const instead of overwriting a single value, so switching envs
 // never touches or loses whatever already existed under a previous one.
-// Bump this whenever GATEWAY_BDO_URL/GATEWAY_ADDIE_URL point at a genuinely
-// different deployment (not for e.g. a same-deployment code redeploy).
-const GATEWAY_ENV: &str = "dev-8as-world";
+// Derived in build.rs from the same host the URLs are built from, so it can
+// never disagree with them — it used to be a hand-maintained const.
+const GATEWAY_ENV: &str = env!("GATEWAY_ENV");
 
 fn default_currency() -> String {
     "usd".to_string()
@@ -371,7 +371,7 @@ fn load_or_create_bdo_sessionless(app: &tauri::AppHandle, invoice_id: &str) -> R
 // gains a stripe_account_id after the user deliberately taps "Set Up
 // Payouts" — never implicitly.
 
-const GATEWAY_ADDIE_URL: &str = "https://dev.8as.world/addie/";
+const GATEWAY_ADDIE_URL: &str = env!("GATEWAY_ADDIE_URL");
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 struct AddieIdentity {
@@ -1066,10 +1066,7 @@ async fn check_payment_status(app: tauri::AppHandle, id: String) -> Result<Payme
 }
 
 async fn fetch_payment_status(uuid: &str) -> Result<serde_json::Value, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = eumachia_client(10)?;
     let resp = client
         .get(format!("{EUMACHIA_PAY_URL}{uuid}/status"))
         .send()
@@ -1128,10 +1125,7 @@ async fn retry_payout(app: tauri::AppHandle, id: String) -> Result<PaymentCheck,
         .sign(format!("{timestamp}{uuid}{BDO_HASH}"))
         .to_hex();
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = eumachia_client(30)?;
     let resp = client
         .post(format!("{EUMACHIA_PAY_URL}{uuid}/payout"))
         .json(&serde_json::json!({
@@ -1361,8 +1355,49 @@ async fn publish_stripe_connected(app: tauri::AppHandle) -> Result<(), String> {
 
 // ── App entry ────────────────────────────────────────────────────────────────
 
+/// A client for the calls that don't go through bdo-rs or addie-rs: eumachia's
+/// own status and payout routes. They cross the same nginx as everything else,
+/// so they carry the same `x-homefront-app-version` header, or a base routing
+/// by version would see only some of this app's traffic.
+fn eumachia_client(timeout_secs: u64) -> Result<reqwest::Client, String> {
+    let mut headers = reqwest::header::HeaderMap::new();
+    if let Ok(parsed) = reqwest::header::HeaderValue::from_str(APP_VERSION_HEADER) {
+        headers.insert("x-homefront-app-version", parsed);
+    }
+    reqwest::Client::builder()
+        .default_headers(headers)
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        .build()
+        .map_err(|e| e.to_string())
+}
+
+// ── Who is calling ───────────────────────────────────────────────────────────
+//
+// Sent as `x-homefront-app-version` on every outbound request, from this app
+// and from the shared clients it links. The point is that a base can tell its
+// callers apart: nginx can route one specific build somewhere else without the
+// app knowing, which is how an App Store reviewer's build gets pointed at a
+// demo base during review.
+//
+// Version comes from Cargo (kept in step with tauri.conf.json and
+// package.json; those three must agree or the build lands in the wrong
+// folder), and the build number from .build-number via build.rs, so this is
+// exactly the CFBundleVersion that ships.
+const APP_VERSION_HEADER: &str = concat!(
+    "getpayed/", env!("CARGO_PKG_VERSION"), "+", env!("APP_BUILD_NUMBER")
+);
+
+/// Tells every shared client who we are. Called once, before anything can
+/// make a request.
+fn announce_app_version() {
+    bdo_rs::set_app_version(APP_VERSION_HEADER);
+    addie_rs::set_app_version(APP_VERSION_HEADER);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    announce_app_version();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_share_sheet::init())
         .plugin(tauri_plugin_app_group::init())
@@ -1398,6 +1433,24 @@ mod tests {
     /// copies that have to agree. This pins the contract on the app that writes it: an
     /// unknown future field must not break the parse, and a profile saved
     /// from here must keep the key.
+
+    /// Every service URL and the env key the uuids are filed under have to name
+    /// the SAME base. They reach lib.rs as separate consts, and nothing at
+    /// runtime would notice them disagreeing: a uuid filed under the wrong env
+    /// key just 404s, which the publish and onboarding paths both read as "not
+    /// set up yet" rather than as a misconfiguration.
+    #[test]
+    fn every_service_url_names_the_same_base() {
+        let host = match env!("GETPAYED_BUILD_ENV") {
+            "dev" | "test" => "dev.8as.world",
+            _ => "prod.8as.world",
+        };
+        assert_eq!(GATEWAY_BDO_URL, format!("https://{host}/bdo/"));
+        assert_eq!(SAVAGE_URL, format!("https://{host}/savage/"));
+        assert_eq!(GATEWAY_ADDIE_URL, format!("https://{host}/addie/"));
+        assert_eq!(EUMACHIA_PAY_URL, format!("https://{host}/eumachia/pay/"));
+        assert_eq!(GATEWAY_ENV, host.replace('.', "-"));
+    }
     #[test]
     fn canonical_profile_round_trips_payout_key() {
         let shared = r#"{

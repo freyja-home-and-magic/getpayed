@@ -369,6 +369,11 @@ textarea {
     border-color: #ff3131;
     color: #ff3131;
 }
+.status-badge.status-no-due-date {
+    background: rgba(230, 160, 60, 0.12);
+    border-color: var(--amber);
+    color: var(--amber);
+}
 .status-badge.status-paid {
     background: rgba(46, 94, 78, 0.15);
     border-color: var(--green);
@@ -398,6 +403,8 @@ textarea {
 /* List-row badges (small subtitle text, no border) — same status names */
 .invoice-list-badge.pending  { color: var(--white-70); }
 .invoice-list-badge.past-due { color: #ff3131;         font-weight: 600; }
+/* Amber, not red: no due date is a state to notice, not a problem. */
+.invoice-list-badge.no-due-date { color: var(--amber); font-weight: 600; }
 .invoice-list-badge.paid     { color: var(--green);    font-weight: 600; }
 .invoice-list-badge.waived   { color: var(--amber);    font-weight: 600; }
 .invoice-list-badge.canceled { color: #ff3131;         font-weight: 600; }

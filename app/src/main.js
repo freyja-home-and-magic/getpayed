@@ -21,13 +21,13 @@ const stripeRequiredBanner = document.getElementById('stripe-required-banner');
 const stripeRequiredConnectBtn = document.getElementById('stripe-required-connect-btn');
 
 const invoiceForm = document.getElementById('invoice-form');
-const fromNote = document.getElementById('from-note');
 const fieldToName = document.getElementById('field-to-name');
 const fieldDescription = document.getElementById('field-description');
 const fieldAmount = document.getElementById('field-amount');
 const fieldWorkDate = document.getElementById('field-work-date');
 const fieldDueDate = document.getElementById('field-due-date');
 const dueDateLabel = document.getElementById('due-date-label');
+const fieldFromName = document.getElementById('field-from-name');
 const createTitle = document.getElementById('create-title');
 const createSubtitle = document.getElementById('create-subtitle');
 const createSubmitBtn = document.getElementById('create-submit-btn');
@@ -167,9 +167,16 @@ function renderInvoiceList() {
 // mutate the record on a timer.
 function displayStatus(doc) {
     const status = doc.status || 'pending';
-    if (status === 'pending' && doc.dueDate) {
+    if (status === 'pending') {
         const dueMs = Number(doc.dueDate);
-        if (Number.isFinite(dueMs) && dueMs > 0 && Date.now() > dueMs) return 'past_due';
+        const hasDue = doc.dueDate && Number.isFinite(dueMs) && dueMs > 0;
+        if (hasDue && Date.now() > dueMs) return 'past_due';
+        // An invoice with no due date is not overdue and never will be, so it
+        // must not borrow past due's red. It says so plainly instead: an
+        // unpaid invoice nobody agreed a date for is worth noticing, just not
+        // alarming about. Estimates are excluded; they have no due date by
+        // design.
+        if (!hasDue && doc.kind !== 'estimate') return 'no_due_date';
     }
     return status;
 }
@@ -178,6 +185,7 @@ function displayStatusLabel(status) {
     switch (status) {
         case 'pending':      return 'Pending';
         case 'past_due':     return 'Past due';
+        case 'no_due_date':  return 'No due date';
         case 'paid_stripe':  return 'Paid';
         case 'paid_manual':  return 'Paid (manual)';
         case 'waived':       return 'Waived';
@@ -193,8 +201,29 @@ function displayStatusClass(status) {
         case 'paid_stripe':
         case 'paid_manual':  return 'paid';
         case 'past_due':     return 'past-due';
+        case 'no_due_date':  return 'no-due-date';
         default:             return status.replace(/_/g, '-');
     }
+}
+
+// What actually goes in the message, rather than a bare URL.
+//
+// The pay link is ~200 characters, because it carries a 128-char signature,
+// and on its own it reads as spam: no sender, no amount, no reason. A line of
+// context costs nothing and survives everywhere — SMS and most email clients
+// never render a link preview at all, so the server-side Open Graph tags on
+// eumachia's pay page can't help there.
+//
+// Estimates say "Estimate", not "Invoice". Sending someone an "invoice" for a
+// quote they have not agreed to is a different conversation.
+function shareMessage(doc) {
+    const kind = doc.kind === 'estimate' ? 'Estimate' : 'Invoice';
+    const who = doc.fromName ? ` from ${doc.fromName}` : '';
+    const amount = formatAmount(doc.amountCents);
+    const what = (doc.description || '').replace(/\s+/g, ' ').trim();
+    const headline = `${kind}${who} for ${amount}${what ? `: ${what}` : ''}`;
+    const action = doc.kind === 'estimate' ? 'View it here' : 'Pay it here';
+    return `${headline}\n\n${action}: ${doc.shareUrl}`;
 }
 
 function renderInvoiceRow(inv) {
@@ -312,11 +341,11 @@ async function openCreateForm(kind = 'invoice') {
         cachedProfileFromName = undefined;
     }
 
-    if (cachedProfileFromName) {
-        fromNote.textContent = `From: ${cachedProfileFromName}`;
-    } else {
-        fromNote.textContent = 'No shared profile name set yet. Set one in Profile so this shows who it’s from.';
-    }
+    // Prefilled from the shared profile when there is one, but always
+    // editable: a name you can't correct on the invoice you're sending is
+    // worse than one you have to type. Leaving it blank is allowed, and the
+    // invoice simply has no From line.
+    fieldFromName.value = cachedProfileFromName || '';
 
     showView('create');
 }
@@ -346,7 +375,7 @@ invoiceForm.addEventListener('submit', async (e) => {
             description,
             amountCents,
             toName,
-            fromName: cachedProfileFromName,
+            fromName: fieldFromName.value.trim() || undefined,
             workPerformedAt,
             dueDate,
         });
@@ -356,7 +385,7 @@ invoiceForm.addEventListener('submit', async (e) => {
 
         if (doc.shareUrl) {
             try {
-                await core.invoke('plugin:share-sheet|share_text', { text: doc.shareUrl });
+                await core.invoke('plugin:share-sheet|share_text', { text: shareMessage(doc) });
             } catch {
                 // Sharing is optional at creation time — the record is already saved.
             }
@@ -734,7 +763,7 @@ shareAgainBtn.addEventListener('click', async () => {
     if (!inv?.shareUrl) return;
     shareAgainBtn.disabled = true;
     try {
-        await core.invoke('plugin:share-sheet|share_text', { text: inv.shareUrl });
+        await core.invoke('plugin:share-sheet|share_text', { text: shareMessage(inv) });
     } catch (err) {
         setStatus(`Couldn't share: ${err}`);
     } finally {

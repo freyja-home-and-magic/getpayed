@@ -1,6 +1,6 @@
 ## Default Permission
 
-Default permissions for the app-group plugin. Allows reading/writing a single JSON string shared between BizBuz and Linkitylink via the group.freyja.idothis App Group.
+Default permissions for the app-group plugin. Allows reading/writing a single JSON string shared across the HomeFront apps via the group.club.home.front App Group.
 
 #### This default permission set includes the following:
 

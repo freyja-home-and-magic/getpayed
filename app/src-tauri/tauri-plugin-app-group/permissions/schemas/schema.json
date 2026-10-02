@@ -319,10 +319,10 @@
           "markdownDescription": "Denies the write_value command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the app-group plugin. Allows reading/writing a single JSON string shared between BizBuz and Linkitylink via the group.freyja.idothis App Group.\n#### This default permission set includes:\n\n- `allow-write-value`\n- `allow-read-value`",
+          "description": "Default permissions for the app-group plugin. Allows reading/writing a single JSON string shared across the HomeFront apps via the group.club.home.front App Group.\n#### This default permission set includes:\n\n- `allow-write-value`\n- `allow-read-value`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the app-group plugin. Allows reading/writing a single JSON string shared between BizBuz and Linkitylink via the group.freyja.idothis App Group.\n#### This default permission set includes:\n\n- `allow-write-value`\n- `allow-read-value`"
+          "markdownDescription": "Default permissions for the app-group plugin. Allows reading/writing a single JSON string shared across the HomeFront apps via the group.club.home.front App Group.\n#### This default permission set includes:\n\n- `allow-write-value`\n- `allow-read-value`"
         }
       ]
     }

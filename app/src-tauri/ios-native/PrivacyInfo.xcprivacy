@@ -2,12 +2,219 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- No tracking. Apple defines tracking as linking data from this app with
+	     Third-Party Data for targeted advertising or advertising measurement,
+	     or sharing it with a data broker. getpayed does neither: no analytics
+	     SDK, no ad SDK. Stripe receives data to run payouts, which is a
+	     service provider doing app functionality, not tracking. The app
+	     therefore needs no ATT prompt. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
+
+	<!-- ── What leaves the device ───────────────────────────────────────────
+	     Two routes, both declared because both are transmission plus
+	     retention, which is Apple's test for "collect" (NOT whether the
+	     developer ever reads it):
+
+	     1. Our own services. Creating an invoice publishes it to a BDO server
+	        that stores it in readable form indefinitely; eumachia keeps the
+	        payment and payout record; addie keeps the Stripe account link and
+	        the email given at onboarding.
+	     2. Stripe Connect onboarding, in-app via the StripeConnect SDK. The
+	        user enters business and identity details straight into Stripe's
+	        embedded component. Apple counts data collected by a third-party
+	        SDK as the app's collection, and StripeConnect 26.11.0 ships no
+	        privacy manifest of its own (StripeCore, StripePayments etc. do,
+	        and Xcode aggregates theirs separately), so it is declared here.
+	        What Stripe asks for varies by country and business type; this
+	        covers a US Express account, individual or company.
+
+	     The optional-disclosure carve-out does not apply: invoicing and
+	     getting paid ARE the primary functionality.
+
+	     All of it is Linked (it is the user's identity and their business),
+	     and the purpose is App Functionality throughout. Stripe's own fraud
+	     and compliance checks on the same data fall under that purpose too.
+
+	     NOT declared, deliberately:
+	       - The cross-app Canonical Profile. App Group storage is on-device;
+	         sharing between our own apps on one phone is not collection.
+	       - Card details a client types into eumachia's pay page. That is a
+	         web page in the payer's browser, not this app.
+	       - Any analytics or diagnostics of our own. There are none. -->
 	<key>NSPrivacyCollectedDataTypes</key>
-	<array/>
+	<array>
+		<!-- Invoice.from_name and Invoice.to_name (BDO), and the legal name of
+		     the account holder and any business representatives (Stripe). -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeName</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- The email passed to start_stripe_onboarding (addie, then Stripe),
+		     and the account email Stripe collects during onboarding. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeEmailAddress</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Stripe onboarding: the account holder's and business's phone
+		     numbers, also used for Stripe's SMS verification. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePhoneNumber</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Stripe onboarding: home address of the account holder and the
+		     business address. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePhysicalAddress</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Stripe onboarding: business name, website or product description,
+		     and customer support contact details. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContactInfo</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Stripe onboarding: the bank account or debit card payouts are sent
+		     to. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePaymentInfo</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Invoice.amount_cents, status and the PayoutRecord (BDO, eumachia),
+		     and the tax ID / EIN Stripe collects for the business. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherFinancialInfo</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Stripe identity verification: a photo of a government ID, taken
+		     with the camera (hence NSCameraUsageDescription) or picked from
+		     the library. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePhotosOrVideos</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Stripe onboarding: date of birth and SSN (last four, or in full
+		     when Stripe needs it). Apple has no category for either, and
+		     neither fits "Sensitive Info", which Apple scopes to race,
+		     religion, health, biometrics and the like. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherDataTypes</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Invoice.description and Invoice.status_note: free text the user
+		     writes. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- Invoice.id, the BDO-assigned uuid in bdo_uuid_by_env, the addie
+		     uuid, and the Stripe connected account id. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+	</array>
+
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
@@ -15,17 +222,20 @@
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
-				<!-- TODO before first TestFlight upload with App Group sharing:
-				     tauri-plugin-app-group/ios/Sources/AppGroupPlugin.swift reads/
-				     writes UserDefaults(suiteName: "group.freyja.idothis"), shared
-				     with BizBuz/Linkitylink/idothis. Look up the current correct
-				     Required Reason API code for App-Group-scoped UserDefaults
-				     access on Apple's published Privacy Manifest Files docs rather
-				     than guessing here, then add it as a <string> entry in this
-				     array (mirrors the same TODO in the other three apps'
-				     ios-native/PrivacyInfo.xcprivacy). This only affects the App
-				     Store Connect privacy report at upload time, not the build
-				     itself, so it's safe to leave open until then. -->
+				<!-- 1C8F.1: information accessible only to apps, app
+				     extensions, and App Clips in the SAME App Group.
+				     tauri-plugin-app-group/ios/Sources/AppGroupPlugin.swift
+				     reads and writes UserDefaults(suiteName:
+				     "group.club.home.front"): the cross-app Canonical Profile,
+				     where getpayed writes stripeConnected and payout.
+				     Omitting this is what triggers ITMS-91053 on upload.
+
+				     CA92.1 (same-app-only access) is deliberately NOT
+				     declared: getpayed's own code touches UserDefaults only
+				     through the App Group plugin. The Stripe SDK's own
+				     UserDefaults use is declared in the Stripe packages' own
+				     manifests. -->
+				<string>1C8F.1</string>
 			</array>
 		</dict>
 	</array>
