@@ -126,8 +126,9 @@ pub struct Invoice {
     /// Snapshotted from the connected Addie payout identity at creation
     /// time, same reasoning as `from_name` — if absent, eumachia sends
     /// 100% of the charge to itself (today's behavior); if present,
-    /// eumachia requests a 91%/9%-minus-fees split with this pubkey as
-    /// the merchant.
+    /// eumachia requests the merchant split with this pubkey as the
+    /// merchant: Stripe's fee off the top, 0.9% to the platform (addie's
+    /// PLATFORM_FEE_PERCENT), the rest to the creator.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub creator_addie_pub_key: Option<String>,
     /// Lifecycle state — see `InvoiceStatus`.
@@ -213,7 +214,7 @@ pub struct PayoutRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// Cents actually transferred, when it sent. Less than the invoice
-    /// total: the platform keeps 9%.
+    /// total by Stripe's fee and the 0.9% platform fee.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub amount: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]

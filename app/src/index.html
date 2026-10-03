@@ -146,7 +146,7 @@
 
             <section class="payouts-stripe-section">
                 <p class="section-label">Payout destination</p>
-                <p class="hint">Invoice payments are made through Stripe, so a connected Stripe account is required before you can create invoices. Connecting sets up automatic payouts. You'll receive 91% of every paid invoice, with the platform keeping 9% minus processing fees.</p>
+                <p class="hint">Invoice payments are made through Stripe, so a connected Stripe account is required before you can create invoices. Connecting sets up automatic payouts. You'll receive each paid invoice minus Stripe's processing fee (2.9% + 30¢) and a 0.9% platform fee. On a $100 invoice, that's $95.90 to you.</p>
 
                 <!-- Four states, driven by what Stripe reports about the
                      account (see renderPayoutStatus): ready to be paid,
@@ -154,7 +154,7 @@
                      nothing set up yet. -->
                 <div id="payouts-connected" hidden>
                     <div class="status-badge status-paid">✅ Ready to get paid</div>
-                    <p class="hint">New invoices you create will now request a 91% split to this account.</p>
+                    <p class="hint">Payments on new invoices will be paid out to this account.</p>
                     <button type="button" class="btn btn-secondary" id="payouts-manage-btn">Update Payout Details</button>
                 </div>
 

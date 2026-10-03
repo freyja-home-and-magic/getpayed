@@ -78,7 +78,7 @@ eumachia now records the outcome of the payout leg on the payment record (`summa
 |---|---|
 | `state` | `sent` \| `failed` \| `none`; anything else is treated as unknown |
 | `reason` | eumachia's classification: `onboarding_incomplete`, `no_payout_account`, `already_paid_out`, `platform_funds`, `payment_not_succeeded`, `unreachable`, `unknown` |
-| `amount` | cents actually transferred — **less than the invoice total, the platform keeps 9%** |
+| `amount` | cents actually transferred — **less than the invoice total by Stripe's fee (2.9% + 30¢) and the platform's 0.9%**; the split is set server-side by addie's `PLATFORM_FEE_PERCENT`, so it can change without an app build, but the Payouts screen states 0.9% in its copy |
 | `transfer_id`, `error` | Stripe's ids and wording, shown as supporting detail only |
 
 `PayoutRecord::is_retryable()` is `state == "failed"` and not `already_paid_out`, since Stripe refusing a duplicate means the money *did* go out. That predicate also stops the poller: `check_payment_status` returns a `PaymentCheck { changed, paid, payout, payout_identity_stale }` instead of a bool, and without it the app re-polled `none` and `already_paid_out` forever.
