@@ -12,7 +12,7 @@ HomeVentory's mission is to help our users understand and protect their homes. O
 
 Various useful user actions such as business card shares, linkitylink views, and/or purchases made from referral links, which are both made by users and contained within shared user pages, are granted a large number (a 128-bit integer in computer-speak). This number encodes, amongst other things, the pay period of the number. At the end of the pay period, currently starting at a month, these numbers are reviewed and used to pay out from the pool to users. 
 
-There is a simple algorithm for these payments. An average based on total users is calculated, and then a cap is placed at two standard deviations from that average. Funds recouped from placing that cap are shared in a step-wise fashion with users within the rest of the distribution. 
+There is a simple algorithm for these payments. An average based on total users is calculated, and then a cap is placed at two standard deviations from that average to mitigate spam and other forms of undesired behavior. Funds recouped from placing that cap are shared in a step-wise fashion with users within the rest of the distribution. 
 
 After the pay period, users retain the numbers, but they no longer act in any fashion in an ongoing concern, monetarily or otherwise, as promisory objects for future payments from HomeVentory. HomeVentory will provide a set of APIs for the transfer and reading of possession of these numbers by 3rd parties. This opens the possibility of a secondary market for these numbers. HomeVentory will not provide any APIs for the "transfer" of these numbers to another system.
 
