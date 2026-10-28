@@ -10,7 +10,7 @@ HomeVentory's mission is to help our users understand and protect their homes. O
 
 ## How it works
 
-Purchases made from referral links, which are both made by users and contained within shared user pages, are granted a large number (a 128-bit integer in computer-speak). This number encodes, amongst other things, the pay period of the number. At the end of the pay period, currently starting at a month, these numbers are reviewed and used to pay out from the pool to users. 
+Various useful user actions such as business card shares, linkitylink views, and/or purchases made from referral links, which are both made by users and contained within shared user pages, are granted a large number (a 128-bit integer in computer-speak). This number encodes, amongst other things, the pay period of the number. At the end of the pay period, currently starting at a month, these numbers are reviewed and used to pay out from the pool to users. 
 
 There is a simple algorithm for these payments. An average based on total users is calculated, and then a cap is placed at two standard deviations from that average. Funds recouped from placing that cap are shared in a step-wise fashion with users within the rest of the distribution. 
 
