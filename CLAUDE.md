@@ -128,6 +128,27 @@ Three things enforce it, because nothing at runtime can:
 
 getpayed was hardcoded to **dev** until this change, so prod is the newly reachable half here, not dev. Build 27 and everything before it is a dev build.
 
+### HomeFront identity and the payment pool (October 2026)
+
+`PAYMENT_POOL.md` is the spec. Every HomeFront app on a phone acts as one
+person: a sessionless identity in the keychain group
+`PCUFMY9NKZ.club.home.front`, through `src-tauri/tauri-plugin-identity-keychain`
+(an identity per allyabase service, keypair plus a uuid per base; `fount`
+is the first; the private key never reaches the web view). The plugin is
+copied into each app like tauri-plugin-app-group and the copies must stay
+identical. `build-ios.cjs` and `dev-ios.cjs` write the
+`keychain-access-groups` entitlement.
+
+GetPayed's part:
+- `join_pool` (launch, and whenever payout status is refreshed) registers
+  the identity with savage's pool and, once this app's Addie identity has a
+  Stripe account, names it as where the identity's earnings go, signed by
+  the identity. This is what makes someone payable from the pool.
+- Every new invoice carries `creatorFountPubKey`; when it's paid and the
+  payout is sent, eumachia reports it and the sender earns a nineum.
+
+See savage/CLAUDE.md "The payment pool" for what earns and how it pays.
+
 ## Build & Deploy
 
 `app/package.json` scripts:

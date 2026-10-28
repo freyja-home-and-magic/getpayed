@@ -64,6 +64,11 @@ fs.writeFileSync(entitlementsPath, `<?xml version="1.0" encoding="UTF-8"?>
     <array>
         <string>${APP_GROUP}</string>
     </array>
+    <!-- The HomeFront identity every app shares (tauri-plugin-identity-keychain). -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)club.home.front</string>
+    </array>
 </dict>
 </plist>
 `);

@@ -1029,6 +1029,8 @@ async function renderPayoutStatus() {
     }
     // Best-effort: let sibling apps (idothis) gate on the same fact.
     core.invoke('publish_stripe_connected').catch(() => {});
+    // And tell the payment pool where this person's earnings go.
+    core.invoke('join_pool').catch(() => {});
 }
 
 // Asks Stripe for the live answer. Separate from the above because it's a
@@ -1037,6 +1039,7 @@ async function refreshPayoutStatus({ quiet = false } = {}) {
     try {
         renderPayoutState(await core.invoke('refresh_payout_status'));
         core.invoke('publish_stripe_connected').catch(() => {});
+        core.invoke('join_pool').catch(() => {});
     } catch (err) {
         if (!quiet) setStatus(`Couldn't check with Stripe: ${err}`);
     }

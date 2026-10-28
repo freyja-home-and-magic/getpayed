@@ -131,6 +131,10 @@ pub struct Invoice {
     /// PLATFORM_FEE_PERCENT), the rest to the creator.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub creator_addie_pub_key: Option<String>,
+    /// The sender's HomeFront identity, so that once this invoice is paid
+    /// eumachia can credit them a nineum in the payment pool.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub creator_fount_pub_key: Option<String>,
     /// Lifecycle state — see `InvoiceStatus`.
     #[serde(default)]
     pub status: InvoiceStatus,
@@ -778,6 +782,7 @@ async fn create_invoice(
         from_name,
         to_name,
         creator_addie_pub_key,
+        creator_fount_pub_key: homefront_identity(&app).ok().map(|i| i.pub_key),
         status: initial_status,
         due_date,
         work_performed_at,
@@ -1354,6 +1359,69 @@ async fn publish_stripe_connected(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// ── HomeFront identity and the payment pool ─────────────────────────────────
+//
+// Every HomeFront app acts as one person: a sessionless identity kept in the
+// shared keychain group (tauri-plugin-identity-keychain), with a Fount user.
+// Useful actions earn it nineum, and each month HomeVentory's payment pool
+// pays out on them (PAYMENT_POOL.md, savage/CLAUDE.md "The payment pool").
+// Here: an invoice names its sender's identity (`creatorFountPubKey`), so
+// eumachia can credit them once it's paid, and this app, which holds the
+// payout identity, tells the pool where the identity's earnings go.
+
+const IDENTITY_SERVICE: &str = "fount";
+
+fn homefront_identity(app: &tauri::AppHandle) -> Result<tauri_plugin_identity_keychain::Identity, String> {
+    tauri_plugin_identity_keychain::get_or_create(app, IDENTITY_SERVICE, || {
+        let session = Sessionless::new();
+        (session.private_key().to_hex(), session.public_key().to_hex())
+    })
+}
+
+/// Where this person's money goes: this app's Addie identity, once it has a
+/// Stripe account (the same rule as the destination the sibling apps get).
+fn own_payout_destination(app: &tauri::AppHandle) -> Option<PayoutDestination> {
+    read_addie_identity(app)
+        .filter(|i| i.stripe_account_id.is_some())
+        .map(|i| PayoutDestination { pub_key: i.pub_key_hex, addie_url: GATEWAY_ADDIE_URL.to_string() })
+}
+
+/// Joins the pool on this base: savage passes our signed Fount create
+/// request on to Fount, which is how it learns which uuid is ours, and the
+/// payout destination is signed by the identity so nobody else can set it.
+/// Idempotent; called at launch and whenever the payout state is refreshed.
+#[tauri::command]
+async fn join_pool(app: tauri::AppHandle) -> Result<String, String> {
+    let identity = homefront_identity(&app)?;
+    let session = sessionless_from_hex(&identity.private_key)?;
+    let timestamp = unix_now_ms_string();
+    let pub_key = identity.pub_key.clone();
+    let mut body = serde_json::json!({
+        "pubKey": pub_key,
+        "timestamp": timestamp,
+        "signature": session.sign(format!("{timestamp}{pub_key}")).to_hex(),
+    });
+    if let Some(destination) = own_payout_destination(&app) {
+        let message = format!("{timestamp}{pub_key}{}{}", destination.pub_key, destination.addie_url);
+        body["payout"] = serde_json::json!({ "pubKey": destination.pub_key, "addieURL": destination.addie_url });
+        body["payoutSignature"] = session.sign(message).to_hex().into();
+    }
+    let response = eumachia_client(8)?
+        .post(format!("{SAVAGE_URL}pool/register"))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = response.status();
+    let joined: serde_json::Value = response.json().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(joined["error"].as_str().unwrap_or("the pool refused").to_string());
+    }
+    let uuid = joined["uuid"].as_str().ok_or("the pool sent no uuid")?.to_string();
+    tauri_plugin_identity_keychain::set_uuid(&app, IDENTITY_SERVICE, GATEWAY_ENV, &uuid)?;
+    Ok(uuid)
+}
+
 // ── App entry ────────────────────────────────────────────────────────────────
 
 /// A client for the calls that don't go through bdo-rs or addie-rs: eumachia's
@@ -1402,6 +1470,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_share_sheet::init())
         .plugin(tauri_plugin_app_group::init())
+        .plugin(tauri_plugin_identity_keychain::init())
         .plugin(tauri_plugin_stripe_connect::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -1419,7 +1488,8 @@ pub fn run() {
             start_stripe_onboarding,
             load_canonical_profile,
             save_canonical_profile,
-            publish_stripe_connected
+            publish_stripe_connected,
+            join_pool
         ])
         .run(tauri::generate_context!())
         .expect("error while running gelder");
